@@ -1,100 +1,48 @@
 import sqlite3
-
-from app.models import Actor
-
-
-import sqlite3
-
+from typing import List
 from app.models import Actor
 
 
 class ActorManager:
-    def __init__(
-            self,
-            db_name: str,
-            table_name: str
-    ) -> None:
+    def __init__(self, db_name: str, table_name: str) -> None:
+        self.db_name = db_name
         self.table_name = table_name
-        self.connection = sqlite3.connect(db_name)
+        self.connection = sqlite3.connect(self.db_name)
+        self._create_table()
 
-    def create(
-            self,
-            first_name: str,
-            last_name: str
-    ) -> None:
+    def _create_table(self) -> None:
+        query = f"""
+        CREATE TABLE IF NOT EXISTS {self.table_name} (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL
+        );
+        """
+        with self.connection:
+            self.connection.execute(query)
+
+    def create(self, first_name: str, last_name: str) -> None:
+        query = f"INSERT INTO {self.table_name} (first_name, last_name) VALUES (?, ?);"
+        with self.connection:
+            self.connection.execute(query, (first_name, last_name))
+
+    def all(self) -> List[Actor]:
+        query = f"SELECT id, first_name, last_name FROM {self.table_name};"
         cursor = self.connection.cursor()
-
-        cursor.execute(
-            f"""
-            INSERT INTO {self.table_name}
-            (first_name, last_name)
-            VALUES (?, ?)
-            """,
-            (first_name, last_name)
-        )
-
-        self.connection.commit()
-
-    def all(self) -> list[Actor]:
-        cursor = self.connection.cursor()
-
-        cursor.execute(
-            f"""
-            SELECT id,
-                   first_name,
-                   last_name
-            FROM {self.table_name}
-            """
-        )
-
+        cursor.execute(query)
         rows = cursor.fetchall()
+        return [Actor(id=row[0], first_name=row[1], last_name=row[2]) for row in rows]
 
-        return [
-            Actor(
-                id=row[0],
-                first_name=row[1],
-                last_name=row[2]
-            )
-            for row in rows
-        ]
+    def update(self, pk: int, new_first_name: str, new_last_name: str) -> None:
+        query = f"UPDATE {self.table_name} SET first_name = ?, last_name = ? WHERE id = ?;"
+        with self.connection:
+            self.connection.execute(query, (new_first_name, new_last_name, pk))
 
-    def update(
-            self,
-            pk: int,
-            new_first_name: str,
-            new_last_name: str
-    ) -> None:
-        cursor = self.connection.cursor()
+    def delete(self, pk: int) -> None:
+        query = f"DELETE FROM {self.table_name} WHERE id = ?;"
+        with self.connection:
+            self.connection.execute(query, (pk,))
 
-        cursor.execute(
-            f"""
-            UPDATE {self.table_name}
-            SET first_name = ?,
-                last_name = ?
-            WHERE id = ?
-            """,
-            (
-                new_first_name,
-                new_last_name,
-                pk
-            )
-        )
-
-        self.connection.commit()
-
-    def delete(
-            self,
-            pk: int
-    ) -> None:
-        cursor = self.connection.cursor()
-
-        cursor.execute(
-            f"""
-            DELETE FROM {self.table_name}
-            WHERE id = ?
-            """,
-            (pk,)
-        )
-
-        self.connection.commit()
-
+    def __del__(self) -> None:
+        if hasattr(self, 'connection'):
+            self.connection.close()
