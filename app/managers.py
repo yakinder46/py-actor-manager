@@ -22,7 +22,10 @@ class ActorManager:
             self.connection.execute(query)
 
     def create(self, first_name: str, last_name: str) -> None:
-        query = f"INSERT INTO {self.table_name} (first_name, last_name) VALUES (?, ?);"
+        query = f"""
+        INSERT INTO {self.table_name} (first_name, last_name)
+        VALUES (?, ?);
+        """
         with self.connection:
             self.connection.execute(query, (first_name, last_name))
 
@@ -31,12 +34,23 @@ class ActorManager:
         cursor = self.connection.cursor()
         cursor.execute(query)
         rows = cursor.fetchall()
-        return [Actor(id=row[0], first_name=row[1], last_name=row[2]) for row in rows]
+        return [
+            Actor(id=row[0], first_name=row[1], last_name=row[2])
+            for row in rows
+        ]
 
-    def update(self, pk: int, new_first_name: str, new_last_name: str) -> None:
-        query = f"UPDATE {self.table_name} SET first_name = ?, last_name = ? WHERE id = ?;"
+    def update(
+        self, pk: int, new_first_name: str, new_last_name: str
+    ) -> None:
+        query = f"""
+        UPDATE {self.table_name}
+        SET first_name = ?, last_name = ?
+        WHERE id = ?;
+        """
         with self.connection:
-            self.connection.execute(query, (new_first_name, new_last_name, pk))
+            self.connection.execute(
+                query, (new_first_name, new_last_name, pk)
+            )
 
     def delete(self, pk: int) -> None:
         query = f"DELETE FROM {self.table_name} WHERE id = ?;"
@@ -44,5 +58,5 @@ class ActorManager:
             self.connection.execute(query, (pk,))
 
     def __del__(self) -> None:
-        if hasattr(self, 'connection'):
+        if hasattr(self, "connection"):
             self.connection.close()
